@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>레이드 일정</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ef; --surface: #ffffff; --surface2: #f0ede8;
+    --border: #e0dbd3; --text: #1a1814; --text2: #6b6560; --text3: #9e9890;
+    --accent: #2d6a4f; --accent-light: #e8f4f0;
+    --danger: #c0392b; --danger-light: #fdf0ee;
+    --radius: 10px; --shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-weight: 700; font-size: 16px; color: var(--text); }
+  .logo span { color: var(--accent); }
+  .container { max-width: 900px; margin: 0 auto; padding: 28px 16px; }
+
+  .setup-banner { background: #fff8e6; border: 1px solid #f0d080; border-radius: var(--radius); padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: #7a5c00; }
+  .setup-banner a { color: #7a5c00; font-weight: 700; cursor: pointer; text-decoration: underline; }
+
+  .webhook-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; display: none; }
+  .webhook-panel.open { display: block; }
+  .webhook-panel h3 { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+  .webhook-guide { background: var(--surface2); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: 12px; color: var(--text2); line-height: 1.8; }
+  .webhook-guide ol { padding-left: 16px; }
+  .webhook-guide code { font-family: 'DM Mono', monospace; background: var(--border); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+  .input-row { display: flex; gap: 8px; align-items: center; }
+  .input-row input { flex: 1; height: 38px; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; font-size: 13px; font-family: 'DM Mono', monospace; background: var(--bg); color: var(--text); outline: none; }
+  .input-row input:focus { border-color: var(--accent); }
+  .webhook-status { font-size: 12px; margin-top: 8px; color: var(--text3); }
+  .webhook-status.ok { color: var(--accent); }
+  .webhook-status.err { color: var(--danger); }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; width: fit-content; }
+  .tab { padding: 8px 18px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text2); border: none; background: none; transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif; }
+  .tab.active { background: var(--accent); color: white; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); }
+  .form-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 18px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 500; color: var(--text2); }
+  input, textarea, select { border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.15s; }
+  input, select { height: 38px; }
+  textarea { padding: 10px 12px; resize: vertical; min-height: 72px; line-height: 1.6; }
+  input:focus, textarea:focus { border-color: var(--accent); background: var(--surface); }
+  .form-actions { margin-top: 18px; display: flex; gap: 10px; justify-content: flex-end; }
+
+  .btn { height: 38px; padding: 0 18px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #245a3f; }
+  .btn-outline { background: none; border: 1px solid var(--border); color: var(--text2); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .btn-sm { height: 30px; padding: 0 12px; font-size: 12px; }
+  .btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #f5c6c2; }
+  .btn-danger:hover { background: var(--danger); color: white; }
+
+  .schedule-list { display: flex; flex-direction: column; gap: 14px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+  .empty-state .big { font-size: 36px; margin-bottom: 10px; }
+
+  .schedule-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); transition: box-shadow 0.15s; }
+  .schedule-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.1); }
+  .card-header { padding: 16px 20px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .card-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .card-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .card-meta { padding: 12px 20px; display: flex; gap: 18px; flex-wrap: wrap; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .meta-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text2); }
+  .card-body { padding: 14px 20px; }
+
+  .capacity-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .capacity-label { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  .progress-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.4s ease; }
+  .progress-fill.full { background: var(--danger); }
+  .capacity-num { font-size: 12px; font-weight: 500; font-family: 'DM Mono', monospace; white-space: nowrap; }
+
+  .applicants { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; min-height: 28px; }
+  .chip { background: var(--accent-light); color: var(--accent); border-radius: 99px; padding: 3px 10px; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
+  .chip-remove { cursor: pointer; opacity: 0.5; font-size: 11px; }
+  .chip-remove:hover { opacity: 1; }
+
+  .card-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .apply-input { flex: 1; min-width: 120px; height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); outline: none; }
+  .apply-input:focus { border-color: var(--accent); }
+
+  .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 500; }
+  .badge-open { background: var(--accent-light); color: var(--accent); }
+  .badge-full { background: var(--danger-light); color: var(--danger); }
+
+  .delete-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; padding: 4px; border-radius: 4px; line-height: 1; transition: color 0.15s; }
+  .delete-btn:hover { color: var(--danger); }
+
+  #toast-wrap { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
+  .toast { background: #1a1814; color: white; padding: 11px 16px; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; animation: slideIn 0.2s ease; box-shadow: 0 4px 16px rgba(0,0,0,0.2); max-width: 300px; }
+  .toast.success { background: var(--accent); }
+  .toast.error { background: var(--danger); }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 500; padding: 16px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 14px; padding: 24px; width: 100%; max-width: 420px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+  .modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--text2); margin-bottom: 18px; line-height: 1.6; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">레이드<span>일정</span></div>
+  <button class="btn btn-outline btn-sm" onclick="toggleWebhook()">⚙️ 디스코드 설정</button>
+</header>
+
+<div class="container">
+  <div class="setup-banner" id="setup-banner">
+    <span>💬</span>
+    <span>디스코드 알림이 꺼져 있어요. <a onclick="toggleWebhook()">웹훅 설정하기</a></span>
+    <button onclick="document.getElementById('setup-banner').style.display='none'" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#7a5c00;font-size:16px;">×</button>
+  </div>
+
+  <div class="webhook-panel" id="webhook-panel">
+    <h3>💬 디스코드 웹훅 설정</h3>
+    <div class="webhook-guide">
+      <ol>
+        <li>알림받을 디스코드 채널 → <code>⚙️ 설정</code> → <code>연동</code> → <code>웹후크</code></li>
+        <li><code>새 웹후크 만들기</code> → <code>웹후크 URL 복사</code></li>
+        <li>아래에 붙여넣고 저장</li>
+      </ol>
+    </div>
+    <div class="input-row">
+      <input type="text" id="webhook-url" placeholder="https://discord.com/api/webhooks/..."/>
+      <button class="btn btn-primary btn-sm" onclick="saveWebhook()">저장</button>
+      <button class="btn btn-outline btn-sm" onclick="testWebhook()">테스트</button>
+    </div>
+    <div class="webhook-status" id="webhook-status"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('list')">📋 일정 목록</button>
+    <button class="tab" onclick="switchTab('add')">➕ 일정 등록</button>
+  </div>
+
+  <div class="tab-content active" id="tab-list">
+    <div class="schedule-list" id="schedule-list">
+      <div class="empty-state"><div class="big">⏳</div><p>불러오는 중...</p></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-add">
+    <div class="form-card">
+      <h2>새 일정 등록</h2>
+      <div class="form-grid">
+        <div class="form-group full"><label>일정 이름 *</label><input type="text" id="f-title" placeholder="예) 발탄 하드 / 카양겔 노말"/></div>
+        <div class="form-group"><label>날짜 *</label><input type="date" id="f-date"/></div>
+        <div class="form-group"><label>시간</label><input type="time" id="f-time"/></div>
+        <div class="form-group"><label>장소/서버</label><input type="text" id="f-place" placeholder="예) 아드레날린 서버"/></div>
+        <div class="form-group"><label>최대 인원 *</label><input type="number" id="f-max" placeholder="8" min="1" max="999"/></div>
+        <div class="form-group full"><label>설명</label><textarea id="f-desc" placeholder="공략 방식, 준비물 등 자유롭게"></textarea></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-outline" onclick="resetForm()">초기화</button>
+        <button class="btn btn-primary" onclick="addSchedule()">✅ 등록하기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <h3>일정을 삭제할까요?</h3>
+    <p>삭제된 일정과 신청자 정보는 복구할 수 없어요.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeDeleteModal()">취소</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import { getDatabase, ref, set, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+  // ── Firebase 초기화 ──────────────────────────────────
+  const app = initializeApp({
+    databaseURL: "https://raid-schedule-bf633-default-rtdb.firebaseio.com/"
+  });
+  const db = getDatabase(app);
+  const schedulesRef = ref(db, 'schedules');
+  const webhookRef = ref(db, 'webhook');
+
+  let deleteTargetId = null;
+  const WEBHOOK_KEY = 'discord_webhook';
+
+  // ── 웹훅 Firebase 동기화 ─────────────────────────────
+  onValue(webhookRef, (snap) => {
+    const data = snap.val();
+    if (data && data.url) {
+      localStorage.setItem(WEBHOOK_KEY, data.url);
+      const el = document.getElementById('webhook-url');
+      if (el) el.value = data.url;
+      document.getElementById('setup-banner').style.display = 'none';
+    }
+  });
+
+  function getWebhook() { return localStorage.getItem(WEBHOOK_KEY) || ''; }
+
+  // ── 실시간 리스너 ────────────────────────────────────
+  onValue(schedulesRef, (snapshot) => {
+    const data = snapshot.val();
+    const list = data
+      ? Object.values(data).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      : [];
+    renderList(list);
+  });
+
+  // ── 탭 ──────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0 && name === 'list') || (i === 1 && name === 'add'));
+    });
+    document.getElementById('tab-list').classList.toggle('active', name === 'list');
+    document.getElementById('tab-add').classList.toggle('active', name === 'add');
+  }
+
+  // ── 웹훅 ────────────────────────────────────────────
+  function toggleWebhook() {
+    const panel = document.getElementById('webhook-panel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) {
+      document.getElementById('webhook-url').value = getWebhook();
+      document.getElementById('setup-banner').style.display = 'none';
+    }
+  }
+  function saveWebhook() {
+    const url = document.getElementById('webhook-url').value.trim();
+    if (url && !url.startsWith('https://discord.com/api/webhooks/')) {
+      setWebhookStatus('올바른 디스코드 웹훅 URL이 아닙니다.', 'err'); return;
+    }
+    localStorage.setItem(WEBHOOK_KEY, url);
+    if (url) set(webhookRef, { url });
+    setWebhookStatus(url ? '저장됐어요! 디스코드로 알림이 전송됩니다.' : 'URL이 제거됐어요.', 'ok');
+  }
+  function setWebhookStatus(msg, type) {
+    const el = document.getElementById('webhook-status');
+    el.textContent = msg; el.className = 'webhook-status ' + type;
+  }
+  async function testWebhook() {
+    const url = document.getElementById('webhook-url').value.trim() || getWebhook();
+    if (!url) { setWebhookStatus('URL을 먼저 입력해주세요.', 'err'); return; }
+    setWebhookStatus('전송 중...', '');
+    const ok = await sendDiscord(url, { username: '레이드일정', content: '✅ **연결 테스트 성공!**\n디스코드 웹훅 연동이 잘 작동하고 있어요.' });
+    setWebhookStatus(ok ? '테스트 메시지 전송 완료! 디스코드를 확인해보세요.' : '전송 실패. URL을 다시 확인해주세요.', ok ? 'ok' : 'err');
+  }
+  async function sendDiscord(url, payload) {
+    if (!url) return false;
+    try {
+      const fd = new FormData();
+      fd.append('payload_json', JSON.stringify(payload));
+      await fetch(url, { method: 'POST', mode: 'no-cors', body: fd });
+      return true;
+    } catch { return false; }
+  }
+  async function notifyNewSchedule(s) {
+    const url = getWebhook(); if (!url) return;
+    await sendDiscord(url, { username: '레이드일정', content: `📅 **새 일정이 등록됐어요!**\n> **${s.title}**\n> 📆 ${s.date}${s.time ? ' ' + s.time : ''}　📍 ${s.place || '미정'}　👥 0/${s.max}명` });
+  }
+  async function notifyApply(s, name) {
+    const url = getWebhook(); if (!url) return;
+    const isFull = s.applicants.length >= s.max;
+    await sendDiscord(url, { username: '레이드일정', content: `${isFull ? '🔔 **마감됐어요!**' : '✋ **신청자가 생겼어요!**'}\n**${name}** 님이 **${s.title}** 에 신청했어요.\n👥 ${s.applicants.length}/${s.max}명　📆 ${s.date}${s.time ? ' ' + s.time : ''}` });
+  }
+  async function notifyCancel(s, name) {
+    const url = getWebhook(); if (!url) return;
+    await sendDiscord(url, { username: '레이드일정', content: `🚪 **신청이 취소됐어요**\n**${name}** 님이 **${s.title}** 신청을 취소했어요.\n👥 ${s.applicants.length}/${s.max}명` });
+  }
+
+  // ── 일정 CRUD ────────────────────────────────────────
+  function addSchedule() {
+    const title = document.getElementById('f-title').value.trim();
+    const date = document.getElementById('f-date').value;
+    const time = document.getElementById('f-time').value;
+    const place = document.getElementById('f-place').value.trim();
+    const max = parseInt(document.getElementById('f-max').value);
+    const desc = document.getElementById('f-desc').value.trim();
+    if (!title || !date || !max || max < 1) { toast('일정 이름, 날짜, 최대 인원은 필수입니다.', 'error'); return; }
+    const id = Date.now().toString();
+    const s = { id, title, date, time, place, max, desc, applicants: [], createdAt: new Date().toISOString() };
+    set(ref(db, 'schedules/' + id), s);
+    toast('일정이 등록됐어요! 🎉', 'success');
+    notifyNewSchedule(s);
+    resetForm();
+    switchTab('list');
+  }
+  function apply(id) {
+    const input = document.getElementById('apply-' + id);
+    const name = input.value.trim();
+    if (!name) { toast('이름을 입력해주세요.', 'error'); return; }
+    get(ref(db, 'schedules/' + id)).then((snap) => {
+      const s = snap.val(); if (!s) return;
+      const applicants = s.applicants || [];
+      if (applicants.includes(name)) { toast('이미 신청한 이름이에요.', 'error'); return; }
+      if (applicants.length >= s.max) { toast('정원이 꽉 찼어요.', 'error'); return; }
+      applicants.push(name);
+      update(ref(db, 'schedules/' + id), { applicants });
+      input.value = '';
+      toast(`${name}님 신청 완료!`, 'success');
+      notifyApply({ ...s, applicants }, name);
+    });
+  }
+  function cancelApply(id, name) {
+    get(ref(db, 'schedules/' + id)).then((snap) => {
+      const s = snap.val(); if (!s) return;
+      const applicants = (s.applicants || []).filter(n => n !== name);
+      update(ref(db, 'schedules/' + id), { applicants });
+      toast(`${name}님 신청이 취소됐어요.`, '');
+      notifyCancel({ ...s, applicants }, name);
+    });
+  }
+  function openDeleteModal(id) { deleteTargetId = id; document.getElementById('delete-modal').classList.add('open'); }
+  function closeDeleteModal() { deleteTargetId = null; document.getElementById('delete-modal').classList.remove('open'); }
+  function confirmDelete() {
+    if (!deleteTargetId) return;
+    remove(ref(db, 'schedules/' + deleteTargetId));
+    closeDeleteModal();
+    toast('일정이 삭제됐어요.', '');
+  }
+
+  // ── 렌더링 ───────────────────────────────────────────
+  function renderList(schedules) {
+    const container = document.getElementById('schedule-list');
+    if (!schedules || !schedules.length) {
+      container.innerHTML = '<div class="empty-state"><div class="big">📭</div><p>등록된 일정이 없어요.<br>상단 [일정 등록] 탭에서 첫 일정을 만들어보세요!</p></div>';
+      return;
+    }
+    container.innerHTML = schedules.map(s => {
+      const isFull = s.applicants.length >= s.max;
+      const pct = Math.min(100, Math.round(s.applicants.length / s.max * 100));
+      const chips = s.applicants.map(n =>
+        `<span class="chip">${esc(n)}<span class="chip-remove" onclick="cancelApply('${s.id}','${n.replace(/'/g,"\\'")}')">×</span></span>`
+      ).join('');
+      const dateStr = s.date ? new Date(s.date + 'T00:00:00').toLocaleDateString('ko-KR', {month:'long',day:'numeric',weekday:'short'}) : '';
+      return `
+      <div class="schedule-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">${esc(s.title)}</div>
+            ${s.desc ? `<div class="card-desc">${esc(s.desc)}</div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <span class="badge ${isFull ? 'badge-full' : 'badge-open'}">${isFull ? '마감' : '모집 중'}</span>
+            <button class="delete-btn" onclick="openDeleteModal('${s.id}')">×</button>
+          </div>
+        </div>
+        <div class="card-meta">
+          ${s.date ? `<span class="meta-item">📆 ${dateStr}${s.time ? ' ' + s.time : ''}</span>` : ''}
+          ${s.place ? `<span class="meta-item">📍 ${esc(s.place)}</span>` : ''}
+          <span class="meta-item">👥 최대 ${s.max}명</span>
+        </div>
+        <div class="card-body">
+          <div class="capacity-row">
+            <span class="capacity-label">신청 현황</span>
+            <div class="progress-track"><div class="progress-fill ${isFull ? 'full' : ''}" style="width:${pct}%"></div></div>
+            <span class="capacity-num">${s.applicants.length}/${s.max}</span>
+          </div>
+          <div class="applicants">${chips || '<span style="color:var(--text3);font-size:12px">아직 신청자가 없어요</span>'}</div>
+          <div class="card-actions">
+            <input class="apply-input" id="apply-${s.id}" placeholder="${isFull ? '정원 마감' : '이름 입력 후 신청'}" ${isFull ? 'disabled' : ''}
+              onkeydown="if(event.key==='Enter') apply('${s.id}')"/>
+            <button class="btn btn-primary btn-sm" onclick="apply('${s.id}')" ${isFull ? 'disabled style="opacity:.4"' : ''}>신청</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function resetForm() { ['f-title','f-date','f-time','f-place','f-max','f-desc'].forEach(id => { document.getElementById(id).value = ''; }); }
+
+  // ── 토스트 ───────────────────────────────────────────
+  function toast(msg, type) {
+    const wrap = document.getElementById('toast-wrap');
+    const el = document.createElement('div');
+    el.className = 'toast ' + (type || '');
+    el.textContent = ({ success:'✅', error:'❌', '':'ℹ️' }[type||''] || '') + ' ' + msg;
+    wrap.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  // ── 전역 등록 (type=module은 전역 스코프 아님) ─────────
+  window.switchTab = switchTab;
+  window.toggleWebhook = toggleWebhook;
+  window.saveWebhook = saveWebhook;
+  window.testWebhook = testWebhook;
+  window.addSchedule = addSchedule;
+  window.apply = apply;
+  window.cancelApply = cancelApply;
+  window.openDeleteModal = openDeleteModal;
+  window.closeDeleteModal = closeDeleteModal;
+  window.confirmDelete = confirmDelete;
+  window.resetForm = resetForm;
+
+  // ── 초기화 ───────────────────────────────────────────
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
